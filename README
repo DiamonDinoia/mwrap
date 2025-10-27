@@ -7,7 +7,89 @@ It makes wrapping C/C++/Fortran from MATLAB almost pleasant!
 The details of converting to and from MATLAB's data structures, and of
 allocating and freeing temporary storage, are hidden from the user. It is also compatible with modern Octave via `mkoctfile --mex`.
 
-To compile, edit `make.inc` and then run `make`.  The output will be a standalone executable (`mwrap`) in the main directory.
+Dependencies
+------------
+
+Building MWrap requires the following tools:
+
+* A C compiler with C99 support and a C++ compiler with C++11 support
+* [CMake](https://cmake.org/) 3.16 or newer
+* [Bison](https://www.gnu.org/software/bison/) 3.x
+* [Flex](https://github.com/westes/flex) 2.6 or newer
+* (Optional) [MATLAB](https://www.mathworks.com/products/matlab.html) with MEX build tooling when compiling wrappers with CMake
+
+If you are using a Debian or Ubuntu based system, the required packages can be
+installed via
+
+```
+sudo apt-get install build-essential cmake bison flex
+```
+
+CMake build
+-----------
+
+Create a build directory and run CMake.  The default configuration uses the
+`USER` profile, which relies on the system Bison/Flex toolchain to regenerate
+the parser and lexer sources, and builds the `mwrap` executable.
+
+```
+mkdir -p build
+cd build
+cmake ..
+cmake --build .
+```
+
+The build can be customized via cache options.  The `MWRAP_PROFILE` entry
+accepts either `USER` (the default) or `DEVELOPER`.  The developer profile
+enables additional diagnostics during parser generation and matches the
+configuration that upstream developers use:
+
+```
+cmake -DMWRAP_PROFILE=DEVELOPER ..
+cmake --build .
+```
+
+Other toggles mirror the historical `make.inc` file.  For example, to enable
+MATLAB `classdef` support and the C99 complex helpers:
+
+```
+cmake -DMWRAP_ENABLE_MATLAB_CLASSDEF=ON -DMWRAP_ENABLE_C99_COMPLEX=ON ..
+```
+
+### Building the MATLAB/Octave examples
+
+The example wrappers under `example/` can be generated through CMake by turning
+on the `MWRAP_BUILD_EXAMPLES` option.  This configuration runs `mwrap` to
+produce the C++ gateway sources (and any requested MATLAB scaffolding).
+By default the build stops after source generation, mirroring the legacy
+Makefiles.  The resulting files live under the build tree in per-example
+subdirectories.
+
+```
+cmake -DMWRAP_BUILD_EXAMPLES=ON ..
+cmake --build . --target mwrap_examples
+```
+
+To have CMake invoke MATLAB's compiler and produce loadable MEX binaries, add
+`-DMWRAP_COMPILE_MEX=ON` when configuring.  CMake will load `FindMatlab`, build
+the generated sources into MEX targets, and attach them to the
+`mwrap_examples` aggregate target.  The resulting binaries are not executed as
+part of the build, so MATLAB does not need to be available at runtime during
+configuration tests.  This mode requires MATLAB's development components to be
+installed and locatable by CMake.
+
+If you leave `MWRAP_COMPILE_MEX` disabled, you can still invoke MATLAB or
+Octave's `mex` tool manually using the produced `.cc` file and any support
+sources that your project requires.  Optional flags such as
+`MWRAP_ENABLE_MATLAB_CLASSDEF` remain available while configuring the
+examples.
+
+Legacy Makefile build
+---------------------
+
+To compile using the original build system, edit `make.inc` and then run
+`make`.  The output will be a standalone executable (`mwrap`) in the main
+directory.
 
 It was created by David Bindel, who hosts his old version
 at https://www.cs.cornell.edu/~bindel/sw/mwrap
