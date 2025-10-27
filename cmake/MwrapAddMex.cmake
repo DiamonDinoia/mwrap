@@ -10,6 +10,7 @@
 #     [MWRAP_FLAGS <flag> [...]]
 #     [WORK_DIR <directory>]
 #     [EXTRA_DEPENDS <dep> [...]]
+#     [COMPILE_DEFINITIONS <definition> [...]]
 #     [OUTPUT_VAR <variable>]
 #   )
 #
@@ -28,7 +29,7 @@ function(mwrap_add_mex target_name)
 
   set(options)
   set(oneValueArgs MEX_NAME CC_FILENAME M_FILENAME CLASSDEF_NAME WORK_DIR OUTPUT_VAR)
-  set(multiValueArgs MW_FILES MWRAP_FLAGS EXTRA_DEPENDS EXTRA_SOURCES INCLUDE_DIRECTORIES)
+  set(multiValueArgs MW_FILES MWRAP_FLAGS EXTRA_DEPENDS EXTRA_SOURCES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS)
   cmake_parse_arguments(MAM "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
   if(NOT MAM_MW_FILES)
@@ -155,6 +156,9 @@ function(mwrap_add_mex target_name)
   if(MAM_INCLUDE_DIRECTORIES)
     set_property(TARGET ${target_name} PROPERTY MWRAP_INCLUDE_DIRECTORIES "${MAM_INCLUDE_DIRECTORIES}")
   endif()
+  if(MAM_COMPILE_DEFINITIONS)
+    set_property(TARGET ${target_name} PROPERTY MWRAP_COMPILE_DEFINITIONS "${MAM_COMPILE_DEFINITIONS}")
+  endif()
   if(MAM_M_FILENAME)
     set_property(TARGET ${target_name} PROPERTY MWRAP_OUTPUT_M_FILE "${mwrap_binary_dir}/${MAM_M_FILENAME}")
   endif()
@@ -173,13 +177,18 @@ function(_mwrap_compile_mex target_name)
     message(FATAL_ERROR "_mwrap_compile_mex was asked to process unknown target '${target_name}'")
   endif()
 
-  if(NOT COMMAND matlab_add_mex)
-    message(FATAL_ERROR "_mwrap_compile_mex requires matlab_add_mex(), but it is unavailable")
+  if(NOT MWRAP_MEX_BACKENDS)
+    message(FATAL_ERROR "_mwrap_compile_mex requires at least one configured backend")
   endif()
 
   get_target_property(cc_output ${target_name} MWRAP_OUTPUT_SOURCE)
   if(NOT cc_output)
     message(FATAL_ERROR "Target '${target_name}' does not have generated source metadata")
+  endif()
+
+  get_target_property(mwrap_binary_dir ${target_name} MWRAP_OUTPUT_DIRECTORY)
+  if(NOT mwrap_binary_dir OR mwrap_binary_dir STREQUAL "NOTFOUND")
+    message(FATAL_ERROR "Target '${target_name}' is missing its output directory metadata")
   endif()
 
   get_target_property(mex_name ${target_name} MWRAP_MEX_NAME)
@@ -197,19 +206,105 @@ function(_mwrap_compile_mex target_name)
     list(APPEND mex_sources ${extra_sources})
   endif()
 
-  set(mex_target "${target_name}_mex")
-  matlab_add_mex(NAME ${mex_target} SRC ${mex_sources} OUTPUT_NAME "${mex_name}")
-  add_dependencies(${mex_target} ${target_name})
-
-  set_property(TARGET ${target_name} PROPERTY MWRAP_OUTPUT_MEX_TARGET "${mex_target}")
-  set_property(TARGET ${target_name} PROPERTY MWRAP_OUTPUT_MEX_PATH $<TARGET_FILE:${mex_target}>)
-
   get_target_property(include_dirs ${target_name} MWRAP_INCLUDE_DIRECTORIES)
-  if(include_dirs AND NOT include_dirs STREQUAL "NOTFOUND")
-    target_include_directories(${mex_target} PRIVATE ${include_dirs})
+  if(include_dirs STREQUAL "NOTFOUND")
+    unset(include_dirs)
+  endif()
+
+  get_target_property(compile_defs ${target_name} MWRAP_COMPILE_DEFINITIONS)
+  if(compile_defs STREQUAL "NOTFOUND")
+    unset(compile_defs)
+  endif()
+
+  set(_mwrap_mex_targets)
+  set(_mwrap_mex_paths)
+
+  foreach(_mwrap_backend IN LISTS MWRAP_MEX_BACKENDS)
+    if(_mwrap_backend STREQUAL "MATLAB")
+      if(NOT COMMAND matlab_add_mex)
+        message(FATAL_ERROR "MATLAB backend requested, but matlab_add_mex() is unavailable")
+      endif()
+
+      set(mex_target "${target_name}_mex")
+      matlab_add_mex(NAME ${mex_target} SRC ${mex_sources} OUTPUT_NAME "${mex_name}")
+      add_dependencies(${mex_target} ${target_name})
+
+      if(include_dirs)
+        target_include_directories(${mex_target} PRIVATE ${include_dirs})
+      endif()
+
+      if(compile_defs)
+        target_compile_definitions(${mex_target} PRIVATE ${compile_defs})
+      endif()
+
+      list(APPEND _mwrap_mex_targets "${mex_target}")
+      list(APPEND _mwrap_mex_paths "$<TARGET_FILE:${mex_target}>")
+    elseif(_mwrap_backend STREQUAL "OCTAVE")
+      if(NOT MWRAP_OCTAVE_MKOCTFILE_EXECUTABLE)
+        message(FATAL_ERROR "Octave backend requested, but no mkoctfile executable was configured")
+      endif()
+
+      set(mex_target "${target_name}_mex_octave")
+      set(octave_output "${mwrap_binary_dir}/${mex_name}.mex")
+
+      set(octave_sources)
+      foreach(oct_src IN LISTS mex_sources)
+        if(IS_ABSOLUTE "${oct_src}")
+          set(oct_src_abs "${oct_src}")
+        else()
+          get_filename_component(oct_src_abs "${oct_src}" ABSOLUTE)
+        endif()
+        list(APPEND octave_sources "${oct_src_abs}")
+      endforeach()
+
+      set(octave_include_args)
+      if(include_dirs)
+        foreach(inc_dir IN LISTS include_dirs)
+          if(NOT IS_ABSOLUTE "${inc_dir}")
+            get_filename_component(inc_dir "${inc_dir}" ABSOLUTE)
+          endif()
+          list(APPEND octave_include_args "-I${inc_dir}")
+        endforeach()
+      endif()
+
+      set(octave_define_args)
+      if(compile_defs)
+        foreach(definition IN LISTS compile_defs)
+          list(APPEND octave_define_args "-D${definition}")
+        endforeach()
+      endif()
+
+      add_custom_command(
+        OUTPUT "${octave_output}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${mwrap_binary_dir}"
+        COMMAND ${MWRAP_OCTAVE_MKOCTFILE_EXECUTABLE} --mex -o "${octave_output}"
+                ${octave_include_args} ${octave_define_args} ${octave_sources}
+        DEPENDS ${octave_sources} ${target_name}
+        BYPRODUCTS "${octave_output}"
+        COMMENT "Building Octave MEX ${mex_name}"
+        VERBATIM COMMAND_EXPAND_LISTS
+      )
+
+      add_custom_target(${mex_target} DEPENDS "${octave_output}")
+      add_dependencies(${mex_target} ${target_name})
+
+      list(APPEND _mwrap_mex_targets "${mex_target}")
+      list(APPEND _mwrap_mex_paths "${octave_output}")
+    else()
+      message(FATAL_ERROR "Unknown MEX backend '${_mwrap_backend}' requested")
+    endif()
+  endforeach()
+
+  if(_mwrap_mex_targets)
+    list(GET _mwrap_mex_targets 0 _mwrap_primary_target)
+    list(GET _mwrap_mex_paths 0 _mwrap_primary_path)
+    set_property(TARGET ${target_name} PROPERTY MWRAP_OUTPUT_MEX_TARGET "${_mwrap_primary_target}")
+    set_property(TARGET ${target_name} PROPERTY MWRAP_OUTPUT_MEX_PATH "${_mwrap_primary_path}")
+    set_property(TARGET ${target_name} PROPERTY MWRAP_OUTPUT_MEX_TARGETS "${_mwrap_mex_targets}")
+    set_property(TARGET ${target_name} PROPERTY MWRAP_OUTPUT_MEX_PATHS "${_mwrap_mex_paths}")
   endif()
 
   if(MCC_OUTPUT_VAR)
-    set(${MCC_OUTPUT_VAR} "${mex_target}" PARENT_SCOPE)
+    set(${MCC_OUTPUT_VAR} "${_mwrap_mex_targets}" PARENT_SCOPE)
   endif()
 endfunction()

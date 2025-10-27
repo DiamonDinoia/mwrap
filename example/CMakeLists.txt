@@ -85,20 +85,51 @@ foreach(example_target IN LISTS _mwrap_example_targets)
   add_dependencies(mwrap_examples ${example_target})
 endforeach()
 
-if(MWRAP_COMPILE_MEX AND "MATLAB" IN_LIST MWRAP_MEX_BACKENDS)
+if(MWRAP_COMPILE_MEX AND MWRAP_MEX_BACKENDS)
   foreach(example_target IN LISTS _mwrap_example_targets)
-    _mwrap_compile_mex(${example_target} OUTPUT_VAR _mwrap_mex_target)
-    if(_mwrap_mex_target)
-      add_dependencies(mwrap_examples ${_mwrap_mex_target})
-      get_target_property(_mex_output_dir ${example_target} MWRAP_OUTPUT_DIRECTORY)
+    _mwrap_compile_mex(${example_target} OUTPUT_VAR _mwrap_mex_targets)
+
+    get_target_property(_mex_output_dir ${example_target} MWRAP_OUTPUT_DIRECTORY)
+    get_target_property(_mex_target_list ${example_target} MWRAP_OUTPUT_MEX_TARGETS)
+    get_target_property(_mex_path_list ${example_target} MWRAP_OUTPUT_MEX_PATHS)
+
+    if(NOT _mex_target_list OR _mex_target_list STREQUAL "NOTFOUND")
+      continue()
+    endif()
+
+    if(NOT _mex_path_list OR _mex_path_list STREQUAL "NOTFOUND")
+      set(_mex_path_list)
+    endif()
+
+    list(LENGTH _mex_target_list _mex_target_count)
+    list(LENGTH _mex_path_list _mex_path_count)
+    if(NOT _mex_target_count EQUAL _mex_path_count)
+      message(FATAL_ERROR "Mismatch between recorded MEX targets and paths for ${example_target}")
+    endif()
+
+    math(EXPR _mex_index "0")
+    foreach(_mex_target IN LISTS _mex_target_list)
+      list(GET _mex_path_list ${_mex_index} _mex_path)
+      add_dependencies(mwrap_examples ${_mex_target})
+
       if(_mex_output_dir AND NOT _mex_output_dir STREQUAL "NOTFOUND")
-        add_custom_command(TARGET ${_mwrap_mex_target} POST_BUILD
+        if(_mex_path MATCHES "\\$<TARGET_FILE:")
+          set(_mex_source_path "${_mex_path}")
+          set(_mex_dest_name "$<TARGET_FILE_NAME:${_mex_target}>")
+        else()
+          set(_mex_source_path "${_mex_path}")
+          get_filename_component(_mex_dest_name "${_mex_path}" NAME)
+        endif()
+
+        add_custom_command(TARGET ${_mex_target} POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory "${_mex_output_dir}"
           COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "$<TARGET_FILE:${_mwrap_mex_target}>"
-            "${_mex_output_dir}/$<TARGET_FILE_NAME:${_mwrap_mex_target}>"
+            "${_mex_source_path}"
+            "${_mex_output_dir}/${_mex_dest_name}"
         )
       endif()
-    endif()
+
+      math(EXPR _mex_index "${_mex_index} + 1")
+    endforeach()
   endforeach()
 endif()
