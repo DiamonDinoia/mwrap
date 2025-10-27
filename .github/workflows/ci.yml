@@ -1,0 +1,89 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Configure and build (${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        profile: [ USER, DEVELOPER ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            bison \
+            flex \
+            zlib1g-dev
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build-${{ matrix.profile }} \
+            -DMWRAP_PROFILE=${{ matrix.profile }}
+
+      - name: Build
+        run: cmake --build build-${{ matrix.profile }}
+
+  matlab-examples:
+    name: Build and test MATLAB examples
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            bison \
+            flex \
+            zlib1g-dev
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+
+      - name: Configure examples with CMake
+        run: |
+          cmake -S . -B build-matlab \
+            -DMWRAP_PROFILE=USER \
+            -DMWRAP_BUILD_EXAMPLES=ON \
+            -DMWRAP_COMPILE_MEX=ON
+
+      - name: Build MATLAB examples
+        run: cmake --build build-matlab --target mwrap_examples
+
+      - name: Run MATLAB example smoke tests
+        uses: matlab-actions/run-command@v2
+        with:
+          command: |
+            buildRoot = fullfile(pwd, 'build-matlab', 'example');
+            addpath(fullfile(pwd, 'example', 'eventq'));
+            addpath(fullfile(buildRoot, 'eventq'));
+            addpath(fullfile(pwd, 'example', 'eventq2'));
+            addpath(fullfile(buildRoot, 'eventq2'));
+            addpath(fullfile(pwd, 'example', 'zlib'));
+            addpath(fullfile(buildRoot, 'zlib'));
+            addpath(fullfile(pwd, 'example', 'fem'));
+            addpath(fullfile(buildRoot, 'fem'));
+            testq_plain;
+            testq_handle;
+            testq_class;
+            testq2;
+            testgz;
+            test_simple;
+            test_patch;
+            test_assembler;
