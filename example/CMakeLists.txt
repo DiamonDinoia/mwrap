@@ -34,6 +34,7 @@ mwrap_add_mex(foobar_example
 )
 
 mwrap_add_mex(eventq_plain_example
+  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/eventq"
   MEX_NAME eventqpmex
   CC_FILENAME eventqpmex.cc
   MW_FILES "${example_source_dir}/eventq/eventq_plain.mw"
@@ -41,6 +42,7 @@ mwrap_add_mex(eventq_plain_example
 )
 
 mwrap_add_mex(eventq_handle_example
+  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/eventq"
   MEX_NAME eventqhmex
   CC_FILENAME eventqhmex.cc
   MW_FILES "${example_source_dir}/eventq/eventq_handle.mw"
@@ -48,6 +50,7 @@ mwrap_add_mex(eventq_handle_example
 )
 
 mwrap_add_mex(eventq_class_example
+  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/eventq"
   MEX_NAME eventqcmex
   CC_FILENAME eventqcmex.cc
   MW_FILES "${example_source_dir}/eventq/eventq_class.mw"
@@ -56,6 +59,7 @@ mwrap_add_mex(eventq_class_example
 )
 
 mwrap_add_mex(eventq2_example
+  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/eventq2"
   MEX_NAME eventq2mex
   CC_FILENAME eventq2mex.cc
   MW_FILES "${example_source_dir}/eventq2/eventq2.mw"
@@ -63,6 +67,7 @@ mwrap_add_mex(eventq2_example
 )
 
 mwrap_add_mex(zlib_example
+  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/zlib"
   MEX_NAME gzmex
   CC_FILENAME gzmex.cc
   MW_FILES "${example_source_dir}/zlib/gzfile.mw"
