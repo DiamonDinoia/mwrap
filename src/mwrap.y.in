@@ -290,6 +290,8 @@ int main(int argc, char** argv)
         fprintf(stderr, "%s", help_string);
         return 0;
     } else {
+        bool emitted_mex_init = false;
+
         for (j = 1; j < argc; ++j) {
             if (strcmp(argv[j], "-m") == 0 && j+1 < argc)
                 outfp = fopen(argv[j+1], "w+");
@@ -336,8 +338,10 @@ int main(int argc, char** argv)
                 yyin = fopen(argv[j], "r");
                 if (yyin) {
                     current_ifname = argv[j];
-		    if (outcfp)
+                    if (outcfp && !emitted_mex_init) {
                         print_mex_init(outcfp);
+                        emitted_mex_init = true;
+                    }
                     err_flag += yyparse();
                     fclose(yyin);
                 } else {
