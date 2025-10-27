@@ -96,6 +96,15 @@ if(MWRAP_COMPILE_MEX)
     _mwrap_compile_mex(${example_target} OUTPUT_VAR _mwrap_mex_target)
     if(_mwrap_mex_target)
       add_dependencies(mwrap_examples ${_mwrap_mex_target})
+      get_target_property(_mex_output_dir ${example_target} MWRAP_OUTPUT_DIRECTORY)
+      if(_mex_output_dir AND NOT _mex_output_dir STREQUAL "NOTFOUND")
+        add_custom_command(TARGET ${_mwrap_mex_target} POST_BUILD
+          COMMAND ${CMAKE_COMMAND} -E make_directory "${_mex_output_dir}"
+          COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:${_mwrap_mex_target}>"
+            "${_mex_output_dir}/$<TARGET_FILE_NAME:${_mwrap_mex_target}>"
+        )
+      endif()
     endif()
   endforeach()
 endif()
