@@ -2,6 +2,7 @@
 .a
 
 /build/
+/build-matlab/
 
 mwrap
 src/lex.yy.o

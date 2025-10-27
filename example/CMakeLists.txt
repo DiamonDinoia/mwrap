@@ -16,6 +16,16 @@ set(_mwrap_example_targets
   fem_interface_example
 )
 
+set(fem_interface_support_sources
+  "${example_source_dir}/fem/src/assembler.cc"
+  "${example_source_dir}/fem/src/gauss2by2.cc"
+  "${example_source_dir}/fem/src/mesh.cc"
+  "${example_source_dir}/fem/src/quad2d1.cc"
+  "${example_source_dir}/fem/src/scalar1d.cc"
+  "${example_source_dir}/fem/src/scalar2d.cc"
+  "${example_source_dir}/fem/src/elastic2d1.cc"
+)
+
 mwrap_add_mex(foobar_example
   MEX_NAME fbmex
   CC_FILENAME fbmex.cc
@@ -68,6 +78,8 @@ mwrap_add_mex(fem_interface_example
     "${example_source_dir}/fem/interface/mesh.mw"
     "${example_source_dir}/fem/interface/elements.mw"
   MWRAP_FLAGS -mb
+  EXTRA_SOURCES ${fem_interface_support_sources}
+  INCLUDE_DIRECTORIES "${example_source_dir}/fem/src"
 )
 
 foreach(example_target IN LISTS _mwrap_example_targets)
