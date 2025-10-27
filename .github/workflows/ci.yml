@@ -30,10 +30,14 @@ jobs:
       - name: Configure CMake
         run: |
           cmake -S . -B build-${{ matrix.profile }} \
-            -DMWRAP_PROFILE=${{ matrix.profile }}
+            -DMWRAP_PROFILE=${{ matrix.profile }} \
+            -DBUILD_TESTING=ON
 
       - name: Build
-        run: cmake --build build-${{ matrix.profile }}
+        run: cmake --build build-${{ matrix.profile }} --target mwrap
+
+      - name: Run tests
+        run: cmake --build build-${{ matrix.profile }} --target mwrap_tests
 
   matlab-examples:
     name: Build and test MATLAB examples

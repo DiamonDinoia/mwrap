@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 project(mwrap LANGUAGES C CXX)
 
+include(CTest)
+
 set(MWRAP_PROFILE "USER" CACHE STRING "Select the mwrap build profile (USER or DEVELOPER)")
 set_property(CACHE MWRAP_PROFILE PROPERTY STRINGS USER DEVELOPER)
 
@@ -19,4 +21,8 @@ add_subdirectory(src)
 
 if(MWRAP_BUILD_EXAMPLES)
   add_subdirectory(example)
+endif()
+
+if(BUILD_TESTING)
+  add_subdirectory(testing)
 endif()
