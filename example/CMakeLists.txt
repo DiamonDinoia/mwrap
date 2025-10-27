@@ -85,7 +85,7 @@ foreach(example_target IN LISTS _mwrap_example_targets)
   add_dependencies(mwrap_examples ${example_target})
 endforeach()
 
-if(MWRAP_COMPILE_MEX)
+if(MWRAP_COMPILE_MEX AND "MATLAB" IN_LIST MWRAP_MEX_BACKENDS)
   foreach(example_target IN LISTS _mwrap_example_targets)
     _mwrap_compile_mex(${example_target} OUTPUT_VAR _mwrap_mex_target)
     if(_mwrap_mex_target)
