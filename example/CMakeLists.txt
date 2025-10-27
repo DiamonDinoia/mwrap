@@ -7,13 +7,13 @@ add_custom_target(mwrap_examples)
 set(example_source_dir "${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(_mwrap_example_targets
-  foobar_example
-  eventq_plain_example
-  eventq_handle_example
-  eventq_class_example
-  eventq2_example
-  zlib_example
-  fem_interface_example
+  foobar
+  eventq_plain
+  eventq_handle
+  eventq_class
+  eventq2
+  zlib
+  fem_interface
 )
 
 set(fem_interface_support_sources
@@ -26,31 +26,28 @@ set(fem_interface_support_sources
   "${example_source_dir}/fem/src/elastic2d1.cc"
 )
 
-mwrap_add_mex(foobar_example
+mwrap_add_mex(foobar
   MEX_NAME fbmex
   CC_FILENAME fbmex.cc
   M_FILENAME foobar.m
   MW_FILES "${example_source_dir}/foobar/foobar.mw"
 )
 
-mwrap_add_mex(eventq_plain_example
-  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/eventq"
+mwrap_add_mex(eventq_plain
   MEX_NAME eventqpmex
   CC_FILENAME eventqpmex.cc
   MW_FILES "${example_source_dir}/eventq/eventq_plain.mw"
   MWRAP_FLAGS -mb
 )
 
-mwrap_add_mex(eventq_handle_example
-  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/eventq"
+mwrap_add_mex(eventq_handle
   MEX_NAME eventqhmex
   CC_FILENAME eventqhmex.cc
   MW_FILES "${example_source_dir}/eventq/eventq_handle.mw"
   MWRAP_FLAGS -mb
 )
 
-mwrap_add_mex(eventq_class_example
-  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/eventq"
+mwrap_add_mex(eventq_class
   MEX_NAME eventqcmex
   CC_FILENAME eventqcmex.cc
   MW_FILES "${example_source_dir}/eventq/eventq_class.mw"
@@ -58,24 +55,21 @@ mwrap_add_mex(eventq_class_example
   CLASSDEF_NAME eventq
 )
 
-mwrap_add_mex(eventq2_example
-  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/eventq2"
+mwrap_add_mex(eventq2
   MEX_NAME eventq2mex
   CC_FILENAME eventq2mex.cc
   MW_FILES "${example_source_dir}/eventq2/eventq2.mw"
   MWRAP_FLAGS -mb
 )
 
-mwrap_add_mex(zlib_example
-  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/zlib"
+mwrap_add_mex(zlib
   MEX_NAME gzmex
   CC_FILENAME gzmex.cc
   MW_FILES "${example_source_dir}/zlib/gzfile.mw"
   MWRAP_FLAGS -mb
 )
 
-mwrap_add_mex(fem_interface_example
-  WORK_DIR "${CMAKE_CURRENT_BINARY_DIR}/fem/interface"
+mwrap_add_mex(fem_interface
   MEX_NAME femex
   CC_FILENAME femex.cc
   MW_FILES
