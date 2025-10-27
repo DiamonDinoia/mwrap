@@ -71,12 +71,21 @@ cmake --build . --target mwrap_examples
 ```
 
 To have CMake invoke MATLAB's compiler and produce loadable MEX binaries, add
-`-DMWRAP_COMPILE_MEX=ON` when configuring.  CMake will load `FindMatlab`, build
-the generated sources into MEX targets, and attach them to the
-`mwrap_examples` aggregate target.  The resulting binaries are not executed as
-part of the build, so MATLAB does not need to be available at runtime during
-configuration tests.  This mode requires MATLAB's development components to be
-installed and locatable by CMake.
+`-DMWRAP_COMPILE_MEX=ON` when configuring.  CMake will build the generated
+sources into MEX targets, attach them to the `mwrap_examples` aggregate target,
+and skip executing the binaries during the build.
+
+The `MWRAP_MEX_BACKEND` cache entry selects which toolchain to use.  MATLAB
+backends require CMake's `FindMatlab` module to locate MATLAB's development
+components, while Octave backends require the `mkoctfile` executable to be
+available.  Choosing `ALL` emits binaries for both environments (and therefore
+requires both toolchains).
+
+```
+cmake -DMWRAP_BUILD_EXAMPLES=ON -DMWRAP_COMPILE_MEX=ON -DMWRAP_MEX_BACKEND=MATLAB ..
+cmake -DMWRAP_BUILD_EXAMPLES=ON -DMWRAP_COMPILE_MEX=ON -DMWRAP_MEX_BACKEND=OCTAVE ..
+cmake -DMWRAP_BUILD_EXAMPLES=ON -DMWRAP_COMPILE_MEX=ON -DMWRAP_MEX_BACKEND=ALL ..
+```
 
 If you leave `MWRAP_COMPILE_MEX` disabled, you can still invoke MATLAB or
 Octave's `mex` tool manually using the produced `.cc` file and any support
