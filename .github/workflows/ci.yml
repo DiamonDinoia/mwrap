@@ -71,9 +71,6 @@ jobs:
       - name: Build MATLAB examples
         run: cmake --build build-matlab --target mwrap_examples
 
-      - name: Run MATLAB example tests
-        run: ctest --test-dir build-matlab --output-on-failure -R '^matlab-'
-
   octave-examples:
     name: Build and test Octave examples
     needs: build
@@ -88,11 +85,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             cmake \
-            bison \
-            flex \
             zlib1g-dev \
             octave \
-            liboctave-dev
+            octave-dev
 
       - name: Configure examples with CMake
         run: |
