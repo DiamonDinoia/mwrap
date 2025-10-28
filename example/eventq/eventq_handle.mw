@@ -29,30 +29,38 @@ classdef eventqh < handle
     end
 
     function delete(q)
-      #delete(EventQueue* q);
+      qp = q.mwptr;
+      if isempty(qp)
+        return;
+      end
+      # delete(EventQueue* qp);
+      q.mwptr = [];
     end
 
     function e = empty(q)
-      # int e = q->EventQueue.empty();
+      qp = q.mwptr;
+      # int e = qp->EventQueue.empty();
     end
 
     function [id, t] = pop(q)
+      qp = q.mwptr;
       $ void pop_event(EventQueue* q, int& id, double& t) {
       $     t  = q->top().first;
       $     id = q->top().second;
       $     q->pop();
       $ }
-      # pop_event(EventQueue* q, output int& id, output double& t);
+      # pop_event(EventQueue* qp, output int& id, output double& t);
     end
 
     function push(q, id, t)
+      qp = q.mwptr;
       $ void push_events(EventQueue* q, int* id, double* t, int m)
       $ {
       $     for (int i = 0; i < m; ++i)
       $         q->push(Event(t[i], id[i]));
       $ }
       m = length(id);
-      # push_events(EventQueue* q, int[m] id, double[m] t, int m);
+      # push_events(EventQueue* qp, int[m] id, double[m] t, int m);
     end
 
   end
