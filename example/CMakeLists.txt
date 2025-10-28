@@ -151,86 +151,99 @@ endif()
 if(BUILD_TESTING AND MWRAP_COMPILE_MEX)
   if(MWRAP_MEX_BACKENDS)
     list(FIND MWRAP_MEX_BACKENDS "OCTAVE" _mwrap_octave_index)
+    list(FIND MWRAP_MEX_BACKENDS "MATLAB" _mwrap_matlab_index)
   else()
     set(_mwrap_octave_index -1)
+    set(_mwrap_matlab_index -1)
   endif()
 
+  function(_mwrap_prepare_smoke_test_runner target_name runner_var workdir_var script_basename_var runner_escape_var)
+    set(options)
+    set(oneValueArgs SCRIPT WORKSPACE)
+    set(multiValueArgs EXTRA_PATHS)
+    cmake_parse_arguments(MTEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if(NOT TARGET ${target_name})
+      message(FATAL_ERROR "Unknown target '${target_name}' requested for smoke test")
+    endif()
+
+    if(NOT MTEST_SCRIPT)
+      message(FATAL_ERROR "SCRIPT must be provided for smoke test on target '${target_name}'")
+    endif()
+
+    get_target_property(wrapper_dir ${target_name} MWRAP_OUTPUT_DIRECTORY)
+    if(NOT wrapper_dir OR wrapper_dir STREQUAL "NOTFOUND")
+      message(FATAL_ERROR "Target '${target_name}' is missing wrapper directory metadata")
+    endif()
+
+    get_target_property(classdef_dir ${target_name} MWRAP_OUTPUT_CLASSDEF_DIR)
+    if(NOT classdef_dir OR classdef_dir STREQUAL "NOTFOUND")
+      unset(classdef_dir)
+    endif()
+
+    set(test_paths ${MTEST_EXTRA_PATHS} "${wrapper_dir}")
+    if(classdef_dir)
+      list(APPEND test_paths "${classdef_dir}")
+    endif()
+    list(REMOVE_DUPLICATES test_paths)
+
+    set(path_commands "")
+    foreach(test_path IN LISTS test_paths)
+      if(test_path)
+        file(TO_CMAKE_PATH "${test_path}" test_path_cmake)
+        string(REPLACE "'" "''" test_path_escaped "${test_path_cmake}")
+        string(APPEND path_commands "addpath('${test_path_escaped}');\n")
+      endif()
+    endforeach()
+    if(path_commands STREQUAL "")
+      set(path_commands "% No additional paths required\n")
+    endif()
+
+    if(MTEST_WORKSPACE)
+      set(work_dir "${MTEST_WORKSPACE}")
+      file(MAKE_DIRECTORY "${work_dir}")
+      file(TO_CMAKE_PATH "${work_dir}" work_dir_cmake)
+      string(REPLACE "'" "''" work_dir_escaped "${work_dir_cmake}")
+      set(work_dir_command "cd('${work_dir_escaped}');\n")
+    else()
+      set(work_dir "${CMAKE_CURRENT_BINARY_DIR}")
+      set(work_dir_command "% No staging directory requested\n")
+      file(TO_CMAKE_PATH "${work_dir}" work_dir_cmake)
+    endif()
+
+    get_filename_component(script_basename "${MTEST_SCRIPT}" NAME_WE)
+    set(runner_file "${CMAKE_CURRENT_BINARY_DIR}/${script_basename}_runner.m")
+    file(TO_CMAKE_PATH "${MTEST_SCRIPT}" script_path_cmake)
+    string(REPLACE "'" "''" script_path_escaped "${script_path_cmake}")
+
+    set(PATHS "${path_commands}")
+    set(WORK_DIR "${work_dir_command}")
+    set(CALL "${script_path_escaped}")
+
+    configure_file(
+      "${CMAKE_CURRENT_SOURCE_DIR}/run_example.m.in"
+      "${runner_file}"
+      @ONLY
+    )
+
+    unset(PATHS)
+    unset(WORK_DIR)
+    unset(CALL)
+
+    file(TO_CMAKE_PATH "${runner_file}" runner_path_cmake)
+    string(REPLACE "'" "''" runner_path_escaped "${runner_path_cmake}")
+
+    set(${runner_var} "${runner_file}" PARENT_SCOPE)
+    set(${workdir_var} "${work_dir}" PARENT_SCOPE)
+    set(${script_basename_var} "${script_basename}" PARENT_SCOPE)
+    set(${runner_escape_var} "${runner_path_escaped}" PARENT_SCOPE)
+  endfunction()
+
+  set(_mwrap_enable_octave_tests FALSE)
   if(_mwrap_octave_index GREATER -1 AND DEFINED MWRAP_OCTAVE_EXECUTABLE AND MWRAP_OCTAVE_EXECUTABLE)
+    set(_mwrap_enable_octave_tests TRUE)
     function(_mwrap_add_octave_smoke_test target_name)
-      set(options)
-      set(oneValueArgs SCRIPT WORKSPACE)
-      set(multiValueArgs EXTRA_PATHS)
-      cmake_parse_arguments(MTEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-      if(NOT TARGET ${target_name})
-        message(FATAL_ERROR "Unknown target '${target_name}' requested for Octave smoke test")
-      endif()
-
-      if(NOT MTEST_SCRIPT)
-        message(FATAL_ERROR "SCRIPT must be provided for Octave smoke test on target '${target_name}'")
-      endif()
-
-      get_target_property(wrapper_dir ${target_name} MWRAP_OUTPUT_DIRECTORY)
-      if(NOT wrapper_dir OR wrapper_dir STREQUAL "NOTFOUND")
-        message(FATAL_ERROR "Target '${target_name}' is missing wrapper directory metadata")
-      endif()
-
-      get_target_property(classdef_dir ${target_name} MWRAP_OUTPUT_CLASSDEF_DIR)
-      if(NOT classdef_dir OR classdef_dir STREQUAL "NOTFOUND")
-        unset(classdef_dir)
-      endif()
-
-      set(test_paths ${MTEST_EXTRA_PATHS} "${wrapper_dir}")
-      if(classdef_dir)
-        list(APPEND test_paths "${classdef_dir}")
-      endif()
-      list(REMOVE_DUPLICATES test_paths)
-
-      set(path_commands "")
-      foreach(test_path IN LISTS test_paths)
-        if(test_path)
-          file(TO_CMAKE_PATH "${test_path}" test_path_cmake)
-          string(REPLACE "'" "''" test_path_escaped "${test_path_cmake}")
-          string(APPEND path_commands "addpath('${test_path_escaped}');\n")
-        endif()
-      endforeach()
-      if(path_commands STREQUAL "")
-        set(path_commands "% No additional paths required\n")
-      endif()
-
-      if(MTEST_WORKSPACE)
-        set(work_dir "${MTEST_WORKSPACE}")
-        file(MAKE_DIRECTORY "${work_dir}")
-        file(TO_CMAKE_PATH "${work_dir}" work_dir_cmake)
-        string(REPLACE "'" "''" work_dir_escaped "${work_dir_cmake}")
-        set(work_dir_command "cd('${work_dir_escaped}');\n")
-      else()
-        set(work_dir "${CMAKE_CURRENT_BINARY_DIR}")
-        set(work_dir_command "% No staging directory requested\n")
-        file(TO_CMAKE_PATH "${work_dir}" work_dir_cmake)
-      endif()
-
-      get_filename_component(script_basename "${MTEST_SCRIPT}" NAME_WE)
-      set(runner_file "${CMAKE_CURRENT_BINARY_DIR}/${script_basename}_runner.m")
-      file(TO_CMAKE_PATH "${MTEST_SCRIPT}" script_path_cmake)
-      string(REPLACE "'" "''" script_path_escaped "${script_path_cmake}")
-
-      set(PATHS "${path_commands}")
-      set(WORK_DIR "${work_dir_command}")
-      set(CALL "${script_path_escaped}")
-
-      configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/run_example.m.in"
-        "${runner_file}"
-        @ONLY
-      )
-
-      unset(PATHS)
-      unset(WORK_DIR)
-      unset(CALL)
-
-      file(TO_CMAKE_PATH "${runner_file}" runner_path_cmake)
-      string(REPLACE "'" "''" runner_path_escaped "${runner_path_cmake}")
+      _mwrap_prepare_smoke_test_runner(${target_name} runner_file work_dir script_basename runner_path_escaped ${ARGN})
 
       set(test_name "octave-${script_basename}")
       add_test(
@@ -238,46 +251,72 @@ if(BUILD_TESTING AND MWRAP_COMPILE_MEX)
         COMMAND ${MWRAP_OCTAVE_EXECUTABLE} --no-gui --quiet --eval "run('${runner_path_escaped}')"
         WORKING_DIRECTORY "${work_dir}"
       )
-
     endfunction()
+  endif()
 
+  set(_mwrap_enable_matlab_tests FALSE)
+  if(_mwrap_matlab_index GREATER -1 AND DEFINED Matlab_MAIN_PROGRAM AND Matlab_MAIN_PROGRAM)
+    set(_mwrap_enable_matlab_tests TRUE)
+    function(_mwrap_add_matlab_smoke_test target_name)
+      _mwrap_prepare_smoke_test_runner(${target_name} runner_file work_dir script_basename runner_path_escaped ${ARGN})
+
+      set(test_name "matlab-${script_basename}")
+      add_test(
+        NAME ${test_name}
+        COMMAND "${Matlab_MAIN_PROGRAM}" -batch "run('${runner_path_escaped}')"
+        WORKING_DIRECTORY "${work_dir}"
+      )
+    endfunction()
+  endif()
+
+  if(_mwrap_enable_octave_tests OR _mwrap_enable_matlab_tests)
     set(fem_workspace "${CMAKE_CURRENT_BINARY_DIR}/fem_workspace")
     file(MAKE_DIRECTORY "${fem_workspace}/mwfem")
 
-    _mwrap_add_octave_smoke_test(eventq_plain
-      SCRIPT "${example_source_dir}/eventq/testq_plain.m"
-      EXTRA_PATHS "${example_source_dir}/eventq"
-    )
-    _mwrap_add_octave_smoke_test(eventq_handle
-      SCRIPT "${example_source_dir}/eventq/testq_handle.m"
-      EXTRA_PATHS "${example_source_dir}/eventq"
-    )
-    _mwrap_add_octave_smoke_test(eventq_class
-      SCRIPT "${example_source_dir}/eventq/testq_class.m"
-      EXTRA_PATHS "${example_source_dir}/eventq"
-    )
-    _mwrap_add_octave_smoke_test(eventq2
-      SCRIPT "${example_source_dir}/eventq2/testq2.m"
-      EXTRA_PATHS "${example_source_dir}/eventq2"
-    )
-    _mwrap_add_octave_smoke_test(zlib
-      SCRIPT "${example_source_dir}/zlib/testgz.m"
-      EXTRA_PATHS "${example_source_dir}/zlib"
-    )
-    _mwrap_add_octave_smoke_test(fem_interface
-      SCRIPT "${example_source_dir}/fem/test_simple.m"
-      WORKSPACE "${fem_workspace}"
-      EXTRA_PATHS "${example_source_dir}/fem" "${fem_workspace}/mwfem"
-    )
-    _mwrap_add_octave_smoke_test(fem_interface
-      SCRIPT "${example_source_dir}/fem/test_patch.m"
-      WORKSPACE "${fem_workspace}"
-      EXTRA_PATHS "${example_source_dir}/fem" "${fem_workspace}/mwfem"
-    )
-    _mwrap_add_octave_smoke_test(fem_interface
-      SCRIPT "${example_source_dir}/fem/test_assembler.m"
-      WORKSPACE "${fem_workspace}"
-      EXTRA_PATHS "${example_source_dir}/fem" "${fem_workspace}/mwfem"
-    )
+    macro(_mwrap_register_example_smoke_tests add_func)
+      cmake_language(CALL "${add_func}" eventq_plain
+        SCRIPT "${example_source_dir}/eventq/testq_plain.m"
+        EXTRA_PATHS "${example_source_dir}/eventq"
+      )
+      cmake_language(CALL "${add_func}" eventq_handle
+        SCRIPT "${example_source_dir}/eventq/testq_handle.m"
+        EXTRA_PATHS "${example_source_dir}/eventq"
+      )
+      cmake_language(CALL "${add_func}" eventq_class
+        SCRIPT "${example_source_dir}/eventq/testq_class.m"
+        EXTRA_PATHS "${example_source_dir}/eventq"
+      )
+      cmake_language(CALL "${add_func}" eventq2
+        SCRIPT "${example_source_dir}/eventq2/testq2.m"
+        EXTRA_PATHS "${example_source_dir}/eventq2"
+      )
+      cmake_language(CALL "${add_func}" zlib
+        SCRIPT "${example_source_dir}/zlib/testgz.m"
+        EXTRA_PATHS "${example_source_dir}/zlib"
+      )
+      cmake_language(CALL "${add_func}" fem_interface
+        SCRIPT "${example_source_dir}/fem/test_simple.m"
+        WORKSPACE "${fem_workspace}"
+        EXTRA_PATHS "${example_source_dir}/fem" "${fem_workspace}/mwfem"
+      )
+      cmake_language(CALL "${add_func}" fem_interface
+        SCRIPT "${example_source_dir}/fem/test_patch.m"
+        WORKSPACE "${fem_workspace}"
+        EXTRA_PATHS "${example_source_dir}/fem" "${fem_workspace}/mwfem"
+      )
+      cmake_language(CALL "${add_func}" fem_interface
+        SCRIPT "${example_source_dir}/fem/test_assembler.m"
+        WORKSPACE "${fem_workspace}"
+        EXTRA_PATHS "${example_source_dir}/fem" "${fem_workspace}/mwfem"
+      )
+    endmacro()
+  endif()
+
+  if(_mwrap_enable_octave_tests)
+    _mwrap_register_example_smoke_tests(_mwrap_add_octave_smoke_test)
+  endif()
+
+  if(_mwrap_enable_matlab_tests)
+    _mwrap_register_example_smoke_tests(_mwrap_add_matlab_smoke_test)
   endif()
 endif()

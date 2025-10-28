@@ -32,6 +32,11 @@ function(mwrap_add_mex target_name)
   set(multiValueArgs MW_FILES MWRAP_FLAGS EXTRA_DEPENDS EXTRA_SOURCES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS)
   cmake_parse_arguments(MAM "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
+  if(MWRAP_ENABLE_MATLAB_CLASSDEF)
+    list(APPEND MAM_COMPILE_DEFINITIONS R2008OO)
+    list(REMOVE_DUPLICATES MAM_COMPILE_DEFINITIONS)
+  endif()
+
   if(NOT MAM_MW_FILES)
     message(FATAL_ERROR "mwrap_add_mex(${target_name}) requires MW_FILES to be specified")
   endif()

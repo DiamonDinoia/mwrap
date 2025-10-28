@@ -75,6 +75,10 @@ To have CMake invoke MATLAB's compiler and produce loadable MEX binaries, add
 sources into MEX targets, attach them to the `mwrap_examples` aggregate target,
 and skip executing the binaries during the build.
 
+When running the MATLAB smoke tests locally (for example, `ctest -R matlab-`),
+build the `mwrap_examples` target beforehand so that the generated wrappers and
+MEX binaries are available to the test runner.
+
 The `MWRAP_MEX_BACKEND` cache entry selects which toolchain to use.  MATLAB
 backends require CMake's `FindMatlab` module to locate MATLAB's development
 components, while Octave backends require the `mkoctfile` executable to be
