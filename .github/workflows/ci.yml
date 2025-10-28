@@ -65,29 +65,46 @@ jobs:
           cmake -S . -B build-matlab \
             -DMWRAP_PROFILE=USER \
             -DMWRAP_BUILD_EXAMPLES=ON \
-            -DMWRAP_COMPILE_MEX=ON
+            -DMWRAP_COMPILE_MEX=ON \
+            -DBUILD_TESTING=ON
 
       - name: Build MATLAB examples
         run: cmake --build build-matlab --target mwrap_examples
 
-      - name: Run MATLAB example smoke tests
-        uses: matlab-actions/run-command@v2
-        with:
-          command: |
-            buildRoot = fullfile(pwd, 'build-matlab', 'example');
-            addpath(fullfile(pwd, 'example', 'eventq'));
-            addpath(fullfile(buildRoot, 'eventq'));
-            addpath(fullfile(pwd, 'example', 'eventq2'));
-            addpath(fullfile(buildRoot, 'eventq2'));
-            addpath(fullfile(pwd, 'example', 'zlib'));
-            addpath(fullfile(buildRoot, 'zlib'));
-            addpath(fullfile(pwd, 'example', 'fem'));
-            addpath(fullfile(buildRoot, 'fem'));
-            testq_plain;
-            testq_handle;
-            testq_class;
-            testq2;
-            testgz;
-            test_simple;
-            test_patch;
-            test_assembler;
+      - name: Run MATLAB example tests
+        run: ctest --test-dir build-matlab --output-on-failure -R '^matlab-'
+
+  octave-examples:
+    name: Build and test Octave examples
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            bison \
+            flex \
+            zlib1g-dev \
+            octave \
+            liboctave-dev
+
+      - name: Configure examples with CMake
+        run: |
+          cmake -S . -B build-octave \
+            -DMWRAP_PROFILE=USER \
+            -DMWRAP_BUILD_EXAMPLES=ON \
+            -DMWRAP_COMPILE_MEX=ON \
+            -DMWRAP_MEX_BACKEND=OCTAVE \
+            -DBUILD_TESTING=ON
+
+      - name: Build Octave examples
+        run: cmake --build build-octave --target mwrap_examples
+
+      - name: Run Octave example tests
+        run: ctest --test-dir build-octave --output-on-failure -R '^octave-'
