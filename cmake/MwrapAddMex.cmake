@@ -280,7 +280,6 @@ function(_mwrap_compile_mex target_name)
         COMMAND ${MWRAP_OCTAVE_MKOCTFILE_EXECUTABLE} --mex -o "${octave_output}"
                 ${octave_include_args} ${octave_define_args} ${octave_sources}
         DEPENDS ${octave_sources} ${target_name}
-        BYPRODUCTS "${octave_output}"
         COMMENT "Building Octave MEX ${mex_name}"
         VERBATIM COMMAND_EXPAND_LISTS
       )
