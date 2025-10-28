@@ -128,6 +128,156 @@ _mwrap_add_log_test(
   ARGS -cppcomplex test_typecheck.mw
 )
 
+if(MWRAP_COMPILE_MEX AND MWRAP_MEX_BACKENDS)
+  include(${CMAKE_SOURCE_DIR}/cmake/MwrapAddMex.cmake)
+
+  set(_mwrap_testing_source_dir "${CMAKE_CURRENT_SOURCE_DIR}")
+  set(_mwrap_testing_binary_dir "${CMAKE_CURRENT_BINARY_DIR}/octave")
+  file(MAKE_DIRECTORY "${_mwrap_testing_binary_dir}")
+
+  configure_file(
+    "${_mwrap_testing_source_dir}/test_include2.mw"
+    "${_mwrap_testing_binary_dir}/test_include2.mw"
+    COPYONLY
+  )
+
+  set(_mwrap_testing_generators)
+
+  mwrap_add_mex(test_transfers
+    WORK_DIR "${_mwrap_testing_binary_dir}"
+    MEX_NAME test_transfersmex
+    CC_FILENAME test_transfersmex.cc
+    M_FILENAME test_transfers.m
+    MW_FILES "${_mwrap_testing_source_dir}/test_transfers.mw"
+  )
+  list(APPEND _mwrap_testing_generators test_transfers)
+
+  mwrap_add_mex(test_cpp_complex
+    WORK_DIR "${_mwrap_testing_binary_dir}"
+    MEX_NAME test_cpp_complexmex
+    CC_FILENAME test_cpp_complexmex.cc
+    M_FILENAME test_cpp_complex.m
+    MW_FILES "${_mwrap_testing_source_dir}/test_cpp_complex.mw"
+    MWRAP_FLAGS -cppcomplex
+  )
+  list(APPEND _mwrap_testing_generators test_cpp_complex)
+
+  mwrap_add_mex(test_c99_complex
+    WORK_DIR "${_mwrap_testing_binary_dir}"
+    MEX_NAME test_c99_complexmex
+    CC_FILENAME test_c99_complexmex.c
+    M_FILENAME test_c99_complex.m
+    MW_FILES "${_mwrap_testing_source_dir}/test_c99_complex.mw"
+    MWRAP_FLAGS -c99complex
+  )
+  list(APPEND _mwrap_testing_generators test_c99_complex)
+
+  mwrap_add_mex(test_catch
+    WORK_DIR "${_mwrap_testing_binary_dir}"
+    MEX_NAME test_catchmex
+    CC_FILENAME test_catchmex.cc
+    M_FILENAME test_catch.m
+    MW_FILES "${_mwrap_testing_source_dir}/test_catch.mw"
+    MWRAP_FLAGS -catch
+  )
+  list(APPEND _mwrap_testing_generators test_catch)
+
+  mwrap_add_mex(test_fortran1
+    WORK_DIR "${_mwrap_testing_binary_dir}"
+    MEX_NAME test_fortran1mex
+    CC_FILENAME test_fortran1mex.cc
+    M_FILENAME test_fortran1.m
+    MW_FILES "${_mwrap_testing_source_dir}/test_fortran1.mw"
+  )
+  list(APPEND _mwrap_testing_generators test_fortran1)
+
+  mwrap_add_mex(test_fortran2
+    WORK_DIR "${_mwrap_testing_binary_dir}"
+    MEX_NAME test_fortran2mex
+    CC_FILENAME test_fortran2mex.c
+    M_FILENAME test_fortran2.m
+    MW_FILES "${_mwrap_testing_source_dir}/test_fortran2.mw"
+  )
+  list(APPEND _mwrap_testing_generators test_fortran2)
+
+  mwrap_add_mex(test_include
+    WORK_DIR "${_mwrap_testing_binary_dir}"
+    MEX_NAME test_includemex
+    CC_FILENAME test_includemex.cc
+    M_FILENAME test_include.m
+    MW_FILES "${_mwrap_testing_source_dir}/test_include.mw"
+  )
+  list(APPEND _mwrap_testing_generators test_include)
+
+  mwrap_add_mex(test_single_cpp
+    WORK_DIR "${_mwrap_testing_binary_dir}"
+    MEX_NAME test_singlemex
+    CC_FILENAME test_singlemex.cc
+    MW_FILES "${_mwrap_testing_source_dir}/test_single.mw"
+    MWRAP_FLAGS -cppcomplex -mb
+  )
+  list(APPEND _mwrap_testing_generators test_single_cpp)
+
+  mwrap_add_mex(test_char_cpp
+    WORK_DIR "${_mwrap_testing_binary_dir}"
+    MEX_NAME test_charmex
+    CC_FILENAME test_charmex.cc
+    MW_FILES "${_mwrap_testing_source_dir}/test_char.mw"
+    MWRAP_FLAGS -cppcomplex -mb
+  )
+  list(APPEND _mwrap_testing_generators test_char_cpp)
+
+  set(_mwrap_testing_mex_targets)
+  foreach(_mwrap_generator IN LISTS _mwrap_testing_generators)
+    _mwrap_compile_mex(${_mwrap_generator} OUTPUT_VAR _mwrap_generator_mex_targets)
+    if(_mwrap_generator_mex_targets)
+      list(APPEND _mwrap_testing_mex_targets ${_mwrap_generator_mex_targets})
+    endif()
+  endforeach()
+  if(_mwrap_testing_mex_targets)
+    list(REMOVE_DUPLICATES _mwrap_testing_mex_targets)
+  endif()
+
+  set(_mwrap_redirect_output "${_mwrap_testing_binary_dir}/test_redirect.m")
+  add_custom_command(
+    OUTPUT "${_mwrap_redirect_output}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${_mwrap_testing_binary_dir}"
+    COMMAND $<TARGET_FILE:mwrap> -mb "${_mwrap_testing_source_dir}/test_redirect.mw"
+    DEPENDS mwrap "${_mwrap_testing_source_dir}/test_redirect.mw"
+    WORKING_DIRECTORY "${_mwrap_testing_binary_dir}"
+    COMMENT "Generating test_redirect.m with mwrap"
+    VERBATIM
+  )
+  add_custom_target(mwrap_testing_redirect DEPENDS "${_mwrap_redirect_output}")
+  set_property(TARGET mwrap_testing_redirect PROPERTY FOLDER "tests")
+
+  set(_mwrap_testing_artifacts ${_mwrap_testing_mex_targets} mwrap_testing_redirect)
+  list(REMOVE_DUPLICATES _mwrap_testing_artifacts)
+
+  if(_mwrap_testing_artifacts)
+    add_custom_target(mwrap_testing_mex DEPENDS ${_mwrap_testing_artifacts})
+    set_property(TARGET mwrap_testing_mex PROPERTY FOLDER "tests")
+  endif()
+
+  if("OCTAVE" IN_LIST MWRAP_MEX_BACKENDS)
+    if(MWRAP_OCTAVE_EXECUTABLE)
+      string(REPLACE "'" "''" _mwrap_octave_binary_dir_escaped "${_mwrap_testing_binary_dir}")
+      string(REPLACE "'" "''" _mwrap_octave_source_dir_escaped "${_mwrap_testing_source_dir}")
+      set(_mwrap_octave_eval
+        "addpath('${_mwrap_octave_binary_dir_escaped}'); addpath('${_mwrap_octave_source_dir_escaped}'); test_all; exit;")
+      add_test(NAME mwrap.octave.test_all
+        COMMAND ${MWRAP_OCTAVE_EXECUTABLE}
+                --quiet --no-init-file
+                --eval "${_mwrap_octave_eval}")
+      set_tests_properties(mwrap.octave.test_all PROPERTIES
+        WORKING_DIRECTORY "${_mwrap_testing_binary_dir}")
+    else()
+      message(WARNING
+        "Octave backend enabled but no Octave interpreter was found; skipping Octave runtime tests.")
+    endif()
+  endif()
+endif()
+
 if(CMAKE_CONFIGURATION_TYPES)
   add_custom_target(mwrap_tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -C $<CONFIG>
@@ -141,4 +291,7 @@ else()
 endif()
 
 add_dependencies(mwrap_tests mwrap)
+if(TARGET mwrap_testing_mex)
+  add_dependencies(mwrap_tests mwrap_testing_mex)
+endif()
 set_property(TARGET mwrap_tests PROPERTY FOLDER "tests")

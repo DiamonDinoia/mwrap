@@ -53,6 +53,7 @@ if(MWRAP_COMPILE_MEX)
 
   if(_mwrap_enable_octave)
     set(_mwrap_octave_mkoctfile "")
+    set(_mwrap_octave_executable "")
 
     find_package(Octave QUIET COMPONENTS Octave_MKOCTFILE)
     if(Octave_FOUND)
@@ -65,9 +66,22 @@ if(MWRAP_COMPILE_MEX)
           set(_mwrap_octave_mkoctfile "${${_mwrap_candidate_var}}")
         endif()
       endforeach()
+
+      foreach(_mwrap_candidate_var IN ITEMS
+          Octave_OCTAVE_EXECUTABLE
+          Octave_EXECUTABLE
+          Octave_OCTAVECLI_EXECUTABLE
+          Octave_OCTAVE_CLI_EXECUTABLE)
+        if(NOT _mwrap_octave_executable AND DEFINED ${_mwrap_candidate_var}
+            AND ${_mwrap_candidate_var})
+          set(_mwrap_octave_executable "${${_mwrap_candidate_var}}")
+        endif()
+      endforeach()
     endif()
 
     if(NOT _mwrap_octave_mkoctfile)
+      unset(_mwrap_octave_mkoctfile CACHE)
+      unset(_mwrap_octave_mkoctfile)
       find_program(_mwrap_octave_mkoctfile mkoctfile)
     endif()
 
@@ -78,13 +92,28 @@ if(MWRAP_COMPILE_MEX)
 
     set(MWRAP_OCTAVE_MKOCTFILE_EXECUTABLE "${_mwrap_octave_mkoctfile}" CACHE FILEPATH
       "Path to the Octave mkoctfile executable" FORCE)
+
+    if(NOT _mwrap_octave_executable)
+      unset(_mwrap_octave_executable CACHE)
+      unset(_mwrap_octave_executable)
+      find_program(_mwrap_octave_executable NAMES octave-cli octave)
+    endif()
+
+    if(_mwrap_octave_executable)
+      set(MWRAP_OCTAVE_EXECUTABLE "${_mwrap_octave_executable}" CACHE FILEPATH
+        "Path to the Octave interpreter" FORCE)
+    else()
+      unset(MWRAP_OCTAVE_EXECUTABLE CACHE)
+    endif()
   else()
     unset(MWRAP_OCTAVE_MKOCTFILE_EXECUTABLE CACHE)
+    unset(MWRAP_OCTAVE_EXECUTABLE CACHE)
   endif()
 else()
   set(MWRAP_MEX_BACKENDS "" CACHE INTERNAL
     "Resolved list of MEX backends to configure" FORCE)
   unset(MWRAP_OCTAVE_MKOCTFILE_EXECUTABLE CACHE)
+  unset(MWRAP_OCTAVE_EXECUTABLE CACHE)
 endif()
 
 add_subdirectory(src)

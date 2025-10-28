@@ -4,8 +4,8 @@ MW=../../mwrap
 
 gzmex:
 	$(MW) -mex gzmex -mb gzfile.mw
-	$(MW) -mex gzmex -c gzmex.c gzfile.mw
-	$(MEX) gzmex.c -lz
+	$(MW) -mex gzmex -c gzmex.cc gzfile.mw
+	$(MEX) gzmex.cc -lz
 
 clean:
 	rm -f gz*.m gzmex.* *.o* eye.gz
