@@ -45,6 +45,7 @@ mwrap_add_mex(eventq_handle
   CC_FILENAME eventqhmex.cc
   MW_FILES "${example_source_dir}/eventq/eventq_handle.mw"
   MWRAP_FLAGS -mb
+  COMPILE_DEFINITIONS R2008OO
 )
 
 mwrap_add_mex(eventq_class
